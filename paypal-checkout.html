@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { margin: 0; padding: 16px; font-family: Arial; }
+    #paypal-button { min-height: 300px; }
+  </style>
+</head>
+<body>
+
+  <div id="paypal-button"></div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const amount = params.get('amount');
+    const currency = params.get('currency') || 'USD';
+    const orderId = params.get('orderId'); // optional (backend-created)
+
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=${currency}`;
+    script.onload = () => {
+      paypal.Buttons({
+        createOrder: () => {
+          if (orderId) return orderId; // backend order
+          return paypal.Actions.order.create({
+            purchase_units: [{ amount: { value: amount } }]
+          });
+        },
+        onApprove: (data, actions) => {
+          return actions.order.capture().then(details => {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              success: true,
+              details
+            }));
+          });
+        },
+        onError: (err) => {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            success: false,
+            error: err.toString()
+          }));
+        }
+      }).render('#paypal-button');
+    };
+    document.body.appendChild(script);
+  </script>
+
+</body>
+</html>
